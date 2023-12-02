@@ -60,11 +60,19 @@
 	border: 1px solid var(--blur-border);
 }
 
-.input-box {
-	display: flex;
+.box.input-box {
+	position: relative;
 	align-items: center;
 	padding: 8px;
 	cursor: pointer;
+}
+
+#send-button {
+	position: absolute;
+	bottom: 25%;
+	right: 10px;
+	z-index: 1;
+	padding: 16px;
 }
 
 #cursor {
@@ -133,5 +141,18 @@
 
 	.conversation .user-input textarea {
 		font-size: 0.875rem;
+	}
+}
+
+@media screen and (max-width: 360px) {
+	.box {
+		border-radius: 0;
+	}
+	.conversation {
+		margin: 0;
+		margin-top: 48px;
+	}
+	.conversation .user-input {
+		margin: 2px 0 8px 0;
 	}
 }

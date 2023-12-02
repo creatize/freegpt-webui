@@ -4,5 +4,5 @@
 		"port": 8080,
 		"debug": false
 	},
-	"use_auto_proxy": false
+	"url_prefix": ""
 }

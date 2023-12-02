@@ -2,6 +2,7 @@ const query = (obj) =>
 	Object.keys(obj)
 		.map((k) => encodeURIComponent(k) + "=" + encodeURIComponent(obj[k]))
 		.join("&");
+const url_prefix = document.querySelector("body").getAttribute("data-urlprefix");
 const markdown = window.markdownit();
 const message_box = document.getElementById(`messages`);
 const message_input = document.getElementById(`message-input`);
@@ -9,8 +10,8 @@ const box_conversations = document.querySelector(`.top`);
 const spinner = box_conversations.querySelector(".spinner");
 const stop_generating = document.querySelector(`.stop-generating`);
 const send_button = document.querySelector(`#send-button`);
-const user_image = `<img src="/assets/img/user.png" alt="User Avatar">`;
-const gpt_image = `<img src="/assets/img/gpt.png" alt="GPT Avatar">`;
+const user_image = `<img src="${url_prefix}/assets/img/user.png" alt="User Avatar">`;
+const gpt_image = `<img src="${url_prefix}/assets/img/gpt.png" alt="GPT Avatar">`;
 let prompt_lock = false;
 
 hljs.addPlugin(new CopyButtonPlugin());
@@ -55,7 +56,7 @@ const ask_gpt = async (message) => {
 		message_input.innerHTML = ``;
 		message_input.innerText = ``;
 
-		add_conversation(window.conversation_id, message.substr(0, 20));
+		add_conversation(window.conversation_id, message.substr(0, 16));
 		window.scrollTo(0, 0);
 		window.controller = new AbortController();
 
@@ -90,7 +91,7 @@ const ask_gpt = async (message) => {
 		await new Promise((r) => setTimeout(r, 1000));
 		window.scrollTo(0, 0);
 
-		const response = await fetch(`/backend-api/v2/conversation`, {
+		const response = await fetch(`${url_prefix}/backend-api/v2/conversation`, {
 			method: `POST`,
 			signal: window.controller.signal,
 			headers: {
@@ -127,7 +128,9 @@ const ask_gpt = async (message) => {
 
 			chunk = decodeUnicode(new TextDecoder().decode(value));
 
-			if (chunk.includes(`<form id="challenge-form" action="/backend-api/v2/conversation?`)) {
+			if (
+				chunk.includes(`<form id="challenge-form" action="${url_prefix}/backend-api/v2/conversation?`)
+			) {
 				chunk = `cloudflare token expired, please refresh the page.`;
 			}
 
@@ -186,21 +189,15 @@ const ask_gpt = async (message) => {
 };
 
 const add_user_message_box = (message) => {
-	const messageDiv = document.createElement("div");
-	messageDiv.classList.add("message");
+	const messageDiv = createElement("div", { classNames: ["message"] });
+	const avatarContainer = createElement("div", { classNames: ["avatar-container"], innerHTML: user_image });
+	const contentDiv = createElement("div", {
+		classNames: ["content"],
+		id: `user_${token}`,
+		textContent: message,
+	});
 
-	const avatarContainer = document.createElement("div");
-	avatarContainer.classList.add("avatar-container");
-	avatarContainer.innerHTML = user_image;
-
-	const contentDiv = document.createElement("div");
-	contentDiv.classList.add("content");
-	contentDiv.id = `user_${token}`;
-	contentDiv.innerText = message;
-
-	messageDiv.appendChild(avatarContainer);
-	messageDiv.appendChild(contentDiv);
-
+	messageDiv.append(avatarContainer, contentDiv);
 	message_box.appendChild(messageDiv);
 };
 
@@ -243,7 +240,7 @@ const delete_conversation = async (conversation_id) => {
 };
 
 const set_conversation = async (conversation_id) => {
-	history.pushState({}, null, `/chat/${conversation_id}`);
+	history.pushState({}, null, `${url_prefix}/chat/${conversation_id}`);
 	window.conversation_id = conversation_id;
 
 	await clear_conversation();
@@ -252,7 +249,7 @@ const set_conversation = async (conversation_id) => {
 };
 
 const new_conversation = async () => {
-	history.pushState({}, null, `/chat/`);
+	history.pushState({}, null, `${url_prefix}/chat/`);
 	window.conversation_id = uuid();
 
 	await clear_conversation();
@@ -283,19 +280,14 @@ const load_conversation = async (conversation_id) => {
 };
 
 const load_user_message_box = (content) => {
-	const messageDiv = document.createElement("div");
-	messageDiv.classList.add("message");
+	const messageDiv = createElement("div", { classNames: ["message"] });
+	const avatarContainer = createElement("div", { classNames: ["avatar-container"], innerHTML: user_image });
+	const contentDiv = createElement("div", { classNames: ["content"] });
+	const preElement = document.createElement("pre");
+	preElement.textContent = content;
+	contentDiv.appendChild(preElement);
 
-	const avatarContainer = document.createElement("div");
-	avatarContainer.classList.add("avatar-container");
-	avatarContainer.innerHTML = user_image;
-
-	const contentDiv = document.createElement("div");
-	contentDiv.classList.add("content");
-	contentDiv.innerText = content;
-
-	messageDiv.appendChild(avatarContainer);
-	messageDiv.appendChild(contentDiv);
+	messageDiv.append(avatarContainer, contentDiv);
 
 	return messageDiv.outerHTML;
 };
@@ -426,7 +418,7 @@ window.onload = async () => {
 	}, 1);
 
 	if (!window.location.href.endsWith(`#`)) {
-		if (/\/chat\/.+/.test(window.location.href)) {
+		if (/\/chat\/.+/.test(window.location.href.slice(url_prefix.length))) {
 			await load_conversation(window.conversation_id);
 		}
 	}
@@ -449,22 +441,6 @@ window.onload = async () => {
 
 	register_settings_localstorage();
 };
-
-document.querySelector(".mobile-sidebar").addEventListener("click", (event) => {
-	const sidebar = document.querySelector(".sidebar");
-
-	if (sidebar.classList.contains("shown")) {
-		sidebar.classList.remove("shown");
-		event.target.classList.remove("rotated");
-		document.body.style.overflow = "auto";
-	} else {
-		sidebar.classList.add("shown");
-		event.target.classList.add("rotated");
-		document.body.style.overflow = "hidden";
-	}
-
-	window.scrollTo(0, 0);
-});
 
 const register_settings_localstorage = async () => {
 	settings_ids = ["switch", "model", "jailbreak"];
@@ -507,8 +483,26 @@ const load_settings_localstorage = async () => {
 function clearTextarea(textarea) {
 	textarea.style.removeProperty("height");
 	textarea.style.height = `${textarea.scrollHeight + 4}px`;
-
 	if (textarea.value.trim() === "" && textarea.value.includes("\n")) {
 		textarea.value = "";
 	}
+}
+
+function createElement(tag, { classNames, id, innerHTML, textContent } = {}) {
+	const el = document.createElement(tag);
+	if (classNames) {
+		el.classList.add(...classNames);
+	}
+	if (id) {
+		el.id = id;
+	}
+	if (innerHTML) {
+		el.innerHTML = innerHTML;
+	}
+	if (textContent) {
+		const preElement = document.createElement("pre");
+		preElement.textContent = textContent;
+		el.appendChild(preElement);
+	}
+	return el;
 }
